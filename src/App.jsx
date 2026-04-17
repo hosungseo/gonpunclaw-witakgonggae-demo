@@ -52,6 +52,11 @@ const ALL_FIELDS=[
 ];
 
 const defaultPubFields=()=>{const m={};ALL_FIELDS.forEach(f=>{m[f.key]=f.defaultPublic;});return m;};
+const YEAR_META={
+  2024:{label:"2024 조사결과판",short:"2024 결과판",note:"전년도 조사결과 확정본"},
+  2025:{label:"2025 작성·보완판",short:"2025 작성판",note:"연 1회 실태조사를 위한 당해연도 작성본"},
+};
+const getYearMeta=(year)=>YEAR_META[year]||{label:`${year} 조사판`,short:`${year} 조사판`,note:"연도별 데이터가 분리 관리되는 조사판"};
 
 function mkSample(yr){
   const base=[
@@ -171,6 +176,10 @@ body{
 .brand-kicker{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.54);font-weight:700}
 .hdr h1{font-size:15px;font-weight:700;letter-spacing:-.02em}
 .user-chip{font-size:11px;opacity:.9;padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.06)}
+.yr-sel{display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.06)}
+.yr-label{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.62);font-weight:700}
+.yr-sel select{background:transparent;color:#fff;border:none;font-family:inherit;font-size:11px;font-weight:700;outline:none;cursor:pointer}
+.yr-sel select option{color:#000}
 .nav{background:transparent;border-bottom:none;padding:12px 24px 0;gap:8px}
 .ni{
   padding:9px 14px;
@@ -224,8 +233,20 @@ tbody tr:hover{background:#f8fbff}
 .workspace-hero-copy h2{font-size:31px;line-height:1.1;letter-spacing:-.045em;max-width:18ch;margin-bottom:10px}
 .workspace-hero-copy p{font-size:14px;line-height:1.7;color:#475569;max-width:66ch}
 .hero-eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#2563eb;font-weight:800;margin-bottom:10px}
+.hero-current-board{display:flex;flex-direction:column;gap:4px;margin-top:16px;padding:14px 16px;border-radius:16px;background:rgba(255,255,255,.72);border:1px solid rgba(37,99,235,.1);max-width:520px}
+.hero-current-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#2563eb;font-weight:800}
+.hero-current-board strong{font-size:18px;letter-spacing:-.03em;color:#0f172a}
+.hero-current-board span:last-child{font-size:12px;color:#64748b}
 .hero-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
 .hero-tag{padding:7px 10px;border-radius:999px;background:#fff;border:1px solid rgba(37,99,235,.12);font-size:11px;font-weight:600;color:#334155}
+.survey-year-switcher{margin-top:18px;display:flex;flex-direction:column;gap:10px}
+.survey-year-switcher-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#64748b;font-weight:700}
+.survey-year-pills{display:flex;flex-wrap:wrap;gap:10px}
+.year-pill{min-width:174px;text-align:left;padding:12px 14px;border-radius:16px;border:1px solid rgba(203,213,225,.9);background:rgba(255,255,255,.92);cursor:pointer;transition:all .18s}
+.year-pill:hover{transform:translateY(-1px);border-color:rgba(37,99,235,.22);box-shadow:0 12px 28px rgba(15,23,42,.06)}
+.year-pill strong{display:block;font-size:13px;color:#0f172a;margin-bottom:4px}
+.year-pill span{display:block;font-size:11px;line-height:1.5;color:#64748b}
+.year-pill.on{border-color:rgba(37,99,235,.32);background:linear-gradient(180deg,#fff,#eff6ff);box-shadow:0 14px 30px rgba(37,99,235,.08)}
 .workspace-hero-side{
   border-radius:20px;
   padding:18px;
@@ -241,6 +262,7 @@ tbody tr:hover{background:#f8fbff}
 .hero-side-grid div{padding:12px 0;border-top:1px solid rgba(255,255,255,.08)}
 .hero-side-grid span{display:block;font-size:11px;color:rgba(255,255,255,.58);margin-bottom:6px}
 .hero-side-grid strong{display:block;font-size:32px;letter-spacing:-.05em;line-height:1;font-weight:800}
+.hero-side-note{margin-top:16px;font-size:11px;line-height:1.6;color:rgba(255,255,255,.66)}
 .hero-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
 .hero-actions .btn{padding:8px 12px;font-size:11px}
 .workspace-table-card{padding-top:18px}
@@ -256,6 +278,7 @@ tbody tr:hover{background:#f8fbff}
 @media(max-width:980px){
   .workspace-hero{grid-template-columns:1fr}
   .workspace-hero-copy h2{max-width:none;font-size:28px}
+  .year-pill{min-width:calc(50% - 6px)}
 }
 @media(max-width:768px){
   .fg{grid-template-columns:1fr}
@@ -270,6 +293,8 @@ tbody tr:hover{background:#f8fbff}
   .workspace-hero-copy h2{font-size:24px}
   .workspace-hero-copy p{font-size:13px}
   .hero-side-grid strong{font-size:26px}
+  .survey-year-pills{flex-direction:column}
+  .year-pill{min-width:100%}
 }
 `;
 
@@ -352,30 +377,41 @@ function DetailView({c,prev,onBack,onEdit,onConfirm,onReturn,onDelete,onClone,pu
 }
 
 // ── BoardView ──
-function BoardView({year,cases,allCases,fMin,setFMin,fSt,setFSt,fQ,setFQ,onDetail,onNew,onEdit,onClone,onBulk,onCarry,onOpenDashboard,onOpenPublish}){
+function BoardView({year,cases,allCases,availableYears,onSelectYear,fMin,setFMin,fSt,setFSt,fQ,setFQ,onDetail,onNew,onEdit,onClone,onBulk,onCarry,onOpenDashboard,onOpenPublish}){
   const st={total:allCases.length,draft:allCases.filter(c=>c.status==="DRAFT").length,submitted:allCases.filter(c=>c.status==="SUBMITTED").length,returned:allCases.filter(c=>c.status==="RETURNED").length,confirmed:allCases.filter(c=>c.status==="CONFIRMED").length};
   const ministries=[...new Set(allCases.map(c=>c.ministry))].sort();
+  const yearMeta=getYearMeta(year);
   return <>
     <section className="workspace-hero">
       <div className="workspace-hero-copy">
         <div className="hero-eyebrow">GONPUNCLAW · WORKSPACE</div>
         <h2>민간위탁 실태점검과 공개관리를 한 화면에서 다루는 운영형 워크스페이스</h2>
-        <p>실태점검, 보완요청, 연도 이월, 공개승인까지 한 흐름으로 정리한 데모입니다. 첫 화면은 설명보다 바로 운영에 들어갈 수 있도록 조용한 제품 UI로 정리했습니다.</p>
+        <p>실태점검, 보완요청, 연도 이월, 공개승인까지 한 흐름으로 정리한 데모입니다. 다만 데이터는 상시 운영 데이터가 아니라 <strong>연 1회 실태조사를 기준으로 연도별 분리 관리</strong>되는 조사판 구조를 전제로 합니다.</p>
+        <div className="hero-current-board">
+          <span className="hero-current-label">현재 조사판</span>
+          <strong>{yearMeta.label}</strong>
+          <span>{yearMeta.note}</span>
+        </div>
         <div className="hero-tags">
-          <span className="hero-tag">실태점검 {year}</span>
+          <span className="hero-tag">조사연도 {year}</span>
           <span className="hero-tag">부처 {ministries.length}개</span>
           <span className="hero-tag">공개관리 연계</span>
-          <span className="hero-tag">민간위탁 운영 데모</span>
+          <span className="hero-tag">연차 조사 데이터셋</span>
+        </div>
+        <div className="survey-year-switcher">
+          <span className="survey-year-switcher-label">조사판 전환</span>
+          <div className="survey-year-pills">{availableYears.map(y=>{const meta=getYearMeta(y);return <button key={y} className={"year-pill"+(y===year?" on":"")} onClick={()=>onSelectYear(y)}><strong>{meta.short}</strong><span>{meta.note}</span></button>;})}</div>
         </div>
       </div>
       <div className="workspace-hero-side">
-        <div className="hero-side-label">Current snapshot</div>
+        <div className="hero-side-label">{yearMeta.short}</div>
         <div className="hero-side-grid">
           <div><span>확정</span><strong>{st.confirmed}</strong></div>
           <div><span>보완요청</span><strong>{st.returned}</strong></div>
           <div><span>작성중</span><strong>{st.draft}</strong></div>
           <div><span>전체</span><strong>{st.total}</strong></div>
         </div>
+        <div className="hero-side-note">연 1회 조사 기준으로 각 연도 데이터와 상태가 분리 관리됩니다.</div>
         <div className="hero-actions">
           <button className="btn bp" onClick={onNew}>＋ 신규 등록</button>
           <button className="btn bo" onClick={onOpenPublish}>🌐 공개 관리</button>
@@ -386,7 +422,7 @@ function BoardView({year,cases,allCases,fMin,setFMin,fSt,setFSt,fQ,setFQ,onDetai
 
     <div className="sg summary-strip">{[{l:"전체",v:st.total,c:"#111827",bg:"#f3f4f6"},{l:"작성중",v:st.draft,c:"#6b7280",bg:"#f9fafb"},{l:"제출완료",v:st.submitted,c:"#2563eb",bg:"#eff6ff"},{l:"보완요청",v:st.returned,c:"#dc2626",bg:"#fef2f2"},{l:"확정",v:st.confirmed,c:"#059669",bg:"#ecfdf5"}].map(s=><div key={s.l} className="sc" style={{background:s.bg,borderColor:s.c+"18"}}><div className="sl" style={{color:s.c}}>{s.l}</div><div className="sv" style={{color:s.c}}>{s.v}</div></div>)}</div>
 
-    <div className="card workspace-table-card"><div className="chd"><div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><span className="ctt">위탁사무 목록</span><span className="card-meta">{cases.length}건 · 현재 연도 운영 목록</span></div><div style={{display:"flex",gap:5,flexWrap:"wrap"}}><button className="btn bg bs" onClick={onCarry}>📥 이월</button><button className="btn bo bs" onClick={onBulk}>📤 일괄제출</button></div></div>
+    <div className="card workspace-table-card"><div className="chd"><div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><span className="ctt">위탁사무 목록</span><span className="card-meta">{cases.length}건 · {yearMeta.label}</span></div><div style={{display:"flex",gap:5,flexWrap:"wrap"}}><button className="btn bg bs" onClick={onCarry}>📥 이월</button><button className="btn bo bs" onClick={onBulk}>📤 일괄제출</button></div></div>
     <div className="flt filter-strip" style={{marginBottom:12}}><select value={fMin} onChange={e=>setFMin(e.target.value)}><option value="">전체 부처</option>{ministries.map(m=><option key={m}>{m}</option>)}</select><select value={fSt} onChange={e=>setFSt(e.target.value)}><option value="">전체 상태</option>{Object.entries(STATUSES).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select><input placeholder="부처·사무명·수탁기관 검색" value={fQ} onChange={e=>setFQ(e.target.value)} style={{width:220}}/></div>
     <div className="tbl-w"><table><thead><tr><th>#</th><th>부처</th><th>위탁사무명</th><th>수탁기관</th><th style={{textAlign:"right"}}>비용</th><th>미이행</th><th>상태</th><th>공개</th><th>관리</th></tr></thead><tbody>
       {!cases.length&&<tr><td colSpan={9} style={{textAlign:"center",padding:36,color:"#64748b"}}>조건에 맞는 데이터가 없습니다</td></tr>}
@@ -619,7 +655,7 @@ export default function App(){
   };
 
   let content=null;
-  if(tab==="board"&&view==="list")content=<BoardView year={year} cases={filtered} allCases={cases} fMin={fMin} setFMin={setFMin} fSt={fSt} setFSt={setFSt} fQ={fQ} setFQ={setFQ} onDetail={c=>{setSel(c);setView("detail");}} onNew={()=>{setEditing(emptyCase(year));setView("form");}} onEdit={c=>{setEditing({...c});setView("form");}} onClone={cloneCase} onBulk={bulkSubmit} onCarry={doCarryover} onOpenDashboard={()=>{setTab("dashboard");resetView();}} onOpenPublish={()=>{setTab("publish");resetView();}}/>;
+  if(tab==="board"&&view==="list")content=<BoardView year={year} cases={filtered} allCases={cases} availableYears={Object.keys(allData).map(Number).sort()} onSelectYear={(nextYear)=>{setYear(nextYear);resetView();}} fMin={fMin} setFMin={setFMin} fSt={fSt} setFSt={setFSt} fQ={fQ} setFQ={setFQ} onDetail={c=>{setSel(c);setView("detail");}} onNew={()=>{setEditing(emptyCase(year));setView("form");}} onEdit={c=>{setEditing({...c});setView("form");}} onClone={cloneCase} onBulk={bulkSubmit} onCarry={doCarryover} onOpenDashboard={()=>{setTab("dashboard");resetView();}} onOpenPublish={()=>{setTab("publish");resetView();}}/>;
   else if(tab==="board"&&view==="detail"&&sel)content=<DetailView c={sel} prev={getPrev(sel)} onBack={()=>setView("list")} onEdit={c=>{setEditing({...c});setView("form");}} onConfirm={confirmCase} onReturn={returnCase} onDelete={deleteCase} onClone={cloneCase} pubFields={pubFields} onPubApprove={c=>{pubApprove(c);show("✓ 공개승인")}}/>;
   else if(tab==="board"&&view==="form"&&editing)content=<FormView c={editing} prev={getPrev(editing)} onSave={saveCase} onBack={()=>{setView("list");setEditing(null);}} year={year}/>;
   else if(tab==="dashboard")content=<DashboardView cases={cases}/>;
@@ -627,7 +663,7 @@ export default function App(){
   else if(tab==="publish")content=<PublishView cases={cases} pubFields={pubFields} setPubFields={setPubFields} onPubApprove={pubApprove} onPubRevoke={pubRevoke} onExport={pubExport} onSetOverride={pubSetOverride} show={show}/>;
 
   return <div className="app"><style>{css}</style>
-    <header className="hdr"><div className="hdr-l"><div className="logo">위</div><div className="brand-block"><div className="brand-kicker">GONPUNCLAW · INSPECTOR</div><h1>국가사무 민간위탁 실태점검 시스템</h1></div></div><div className="hdr-r"><div className="yr-sel">📅 <select value={year} onChange={e=>{setYear(+e.target.value);resetView();}}><option value={2024}>2024년</option><option value={2025}>2025년</option></select></div><div className="user-chip">👤 서호성 사무관</div></div></header>
+    <header className="hdr"><div className="hdr-l"><div className="logo">위</div><div className="brand-block"><div className="brand-kicker">GONPUNCLAW · INSPECTOR</div><h1>국가사무 민간위탁 실태점검 시스템</h1></div></div><div className="hdr-r"><div className="yr-sel"><span className="yr-label">조사연도</span><select value={year} onChange={e=>{setYear(+e.target.value);resetView();}}>{Object.keys(allData).map(Number).sort().map(y=><option key={y} value={y}>{getYearMeta(y).short}</option>)}</select></div><div className="user-chip">👤 서호성 사무관</div></div></header>
     <nav className="nav">{[["board","목록"],["dashboard","대시보드"],["stats","통계"],["publish","공개 관리"]].map(([k,l])=><div key={k} className={"ni"+(tab===k?" on":"")} onClick={()=>{setTab(k);resetView();}}>{l}</div>)}</nav>
     <div className="ct">{content}</div>
     {toast&&<div className="toast">{toast}</div>}
