@@ -54,3 +54,12 @@ docs/                  # 활용 가이드
 ## 라이선스
 
 공공데이터 기반. 별도 명시 없는 한 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+
+## 인터랙티브 데모
+
+민간위탁 실태점검 JSX v5를 기반으로 한 데모 앱을 GitHub Pages로 배포합니다.
+
+- 앱 엔트리: `src/App.jsx`
+- 원본 첨부 보관: `source/민간위탁_실태점검_v5.jsx`
+- Pages 배포: `.github/workflows/deploy-pages.yml`
